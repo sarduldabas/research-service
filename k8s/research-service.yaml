@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: research-service
+  namespace: deckpilot
+  labels:
+    app: research-service
+    part-of: deckpilot
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: research-service
+  template:
+    metadata:
+      labels:
+        app: research-service
+        part-of: deckpilot
+    spec:
+      containers:
+        - name: research-service
+          image: deckpilot/research-service:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: deckpilot-config
+            - secretRef:
+                name: azure-openai
+                optional: true
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: research-service
+  namespace: deckpilot
+  labels:
+    app: research-service
+    part-of: deckpilot
+spec:
+  type: ClusterIP
+  selector:
+    app: research-service
+  ports:
+    - port: 8000
+      targetPort: 8000
